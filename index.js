@@ -3,8 +3,12 @@ const { Server: HttpServer } = require('http');
 const { Server: SocketServer } = require('socket.io');
 
 const SQLClient = require('./db/clients/sql.clients');
-const dbConfig = require('./db/config');
+const dbConfig = require('./db/db.config');
+const envConfig = require('./config');
 const initialProducts = require('./db/assets/initialProducts');
+const session = require('express-session');
+const MongoStore = require('connect-mongo');
+
 const {
   createMessagesTable,
   createProductsTable,
@@ -34,6 +38,20 @@ const messagesDB = new SQLClient(dbConfig.sqlite, 'messages');
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(__dirname + '/public'));
+app.use(
+  session({
+    name: 'user-session',
+    secret: envConfig.SESSION_SECRET,
+    maxAge: 1000,
+    rolling: true,
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+      mongoUrl: `mongodb+srv://maurocig:${envConfig.DB_PASSWORD}@coderxx.fm0gxl1.mongodb.net/?retryWrites=true&w=majority`,
+      dbName: 'sessions',
+    }),
+  })
+);
 
 // Listen
 httpServer.listen(PORT, () => {
@@ -65,6 +83,15 @@ io.on('connection', async (socket) => {
 });
 
 // Routes
-app.get('/', async (req, res) => {
+app.get('/home', async (req, res) => {
   res.render('index.html');
+});
+
+app.get('/login', async (req, res) => {
+  res.sendFile('login.html', { root: 'public' });
+});
+
+app.post('/login', async (req, res) => {
+  const { username } = req.body;
+  res.send(`bienvenido ${username}`);
 });
